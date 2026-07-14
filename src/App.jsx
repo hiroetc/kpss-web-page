@@ -10,23 +10,39 @@ import { Home, BookOpen, PenLine, Clock, BarChart3, CheckCircle2, XCircle, Rotat
    İmza öğesi: gerçek KPSS optik formu gibi yuvarlak A-E işaretleme baloncukları.
 ------------------------------------------------------------------- */
 
+/* ------------------------------------------------------------------
+   TASARIM SİSTEMİ (v3 — Editoryal / Ciddi Haber Sitesi)
+   Referans: klasik gazete/dergi siteleri. Siyah-beyaz temel + tek
+   ölçülü vurgu rengi (kobalt mavi). Keskin/az yuvarlatılmış köşeler,
+   ince ayraç çizgileri, büyük serif başlıklar, küçük harfli takip
+   aralıklı etiketler (eyebrow). Süs yok, hiyerarşi net.
+   Başlık: Source Serif 4 (ciddi, okunabilir editoryal serif)
+   Gövde: Inter. Meta/tarih/sayaç: IBM Plex Mono.
+   İmza öğesi korunuyor: KPSS optik formu baloncukları.
+------------------------------------------------------------------- */
+
 const COLORS = {
-  paper: "#F1ECDE",
-  paperDark: "#E7E0CC",
-  ink: "#1B2333",
-  inkSoft: "#2C3650",
-  pencil: "#514F49",
-  rule: "#CFC6AC",
-  optikRed: "#AE2A28",
-  sage: "#3F6B52",
-  sageBg: "#E4EEE6",
-  redBg: "#F5E3E1",
+  paper: "#FFFFFF",
+  paperDark: "#F6F5F3",
+  ink: "#121212",
+  inkSoft: "#2A2A2A",
+  pencil: "#66656A",
+  rule: "#DEDCD8",
+  optikRed: "#1B4DE4",
+  primarySoft: "#EAF0FE",
+  highlight: "#1B4DE4",
+  highlightSoft: "#F5F5F3",
+  sage: "#1E8E5A",
+  sageBg: "#E6F5EC",
+  redBg: "#FBEAE8",
+  danger: "#C0392B",
+  warning: "#B8860B",
 };
 
 const FONT_STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
-.font-display { font-family: 'Bitter', serif; }
-.font-body { font-family: 'IBM Plex Sans', sans-serif; }
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+.font-display { font-family: 'Source Serif 4', serif; }
+.font-body { font-family: 'Inter', sans-serif; }
 .font-mono { font-family: 'IBM Plex Mono', monospace; }
 `;
 
@@ -116,6 +132,13 @@ const SEED_ARTICLES = [
   },
 ];
 
+function getDailyQuestion() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now - start) / 86400000);
+  return QUESTIONS[dayOfYear % QUESTIONS.length];
+}
+
 const CATEGORIES = [...new Set(QUESTIONS.map((q) => q.category))];
 const OPTION_LETTERS = ["A", "B", "C", "D", "E"];
 const EXAM_DURATION = 900; // 15 dakika
@@ -149,8 +172,8 @@ function OptikBubble({ letter, selected, correct, revealed, onClick, disabled })
       fill = COLORS.sage;
       textColor = "#fff";
     } else if (selected && !correct) {
-      border = COLORS.optikRed;
-      fill = COLORS.optikRed;
+      border = COLORS.danger;
+      fill = COLORS.danger;
       textColor = "#fff";
     }
   } else if (selected) {
@@ -191,17 +214,22 @@ function AdSlot({ variant = "banner" }) {
   const isBanner = variant === "banner";
   return (
     <div
-      className="flex items-center justify-center rounded-md w-full"
+      className="flex items-center justify-center rounded-sm w-full"
       style={{
-        border: `1px dashed ${COLORS.rule}`,
+        border: `1px solid ${COLORS.rule}`,
         background: COLORS.paperDark,
         height: isBanner ? 90 : 250,
         color: COLORS.pencil,
       }}
     >
       <div className="text-center">
-        <div className="font-mono text-[10px] tracking-widest uppercase mb-1">Reklam Alanı</div>
-        <div className="text-xs" style={{ opacity: 0.7 }}>
+        <div
+          className="font-mono text-[10px] tracking-widest uppercase mb-1 inline-block px-2 py-0.5"
+          style={{ background: "#fff", color: COLORS.pencil, border: `1px solid ${COLORS.rule}` }}
+        >
+          Sponsorlu
+        </div>
+        <div className="text-xs mt-1" style={{ opacity: 0.6 }}>
           {isBanner ? "728×90 · banner" : "300×250 · kare"}
         </div>
       </div>
@@ -337,39 +365,30 @@ export default function KPSSPlatform() {
       <style>{FONT_STYLE}</style>
 
       {/* ÜST BAR */}
-      <header style={{ background: COLORS.ink }} className="text-white">
-        <div className="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div
-              className="font-mono font-semibold flex items-center justify-center rounded"
-              style={{ width: 34, height: 34, border: `2px solid ${COLORS.optikRed}`, color: COLORS.optikRed }}
-            >
-              ✓
-            </div>
-            <span className="font-display text-xl tracking-tight">KPSS Hazırlık</span>
-          </div>
-          <nav className="hidden md:flex gap-1">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const active = page === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setPage(item.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm rounded transition-colors"
-                  style={{
-                    background: active ? COLORS.optikRed : "transparent",
-                    color: active ? "#fff" : "#D9D5C6",
-                  }}
-                >
-                  <Icon size={15} /> {item.label}
-                </button>
-              );
-            })}
-          </nav>
+      <header className="sticky top-0 z-20" style={{ background: "#fff" }}>
+        {/* İnce üst şerit */}
+        <div
+          className="max-w-5xl mx-auto px-5 py-1.5 hidden sm:flex items-center justify-between"
+          style={{ borderBottom: `1px solid ${COLORS.rule}` }}
+        >
+          <span className="font-mono text-[11px] tracking-widest uppercase" style={{ color: COLORS.pencil }}>
+            KPSS Hazırlık Yayın Ağı
+          </span>
+          <span className="font-mono text-[11px]" style={{ color: COLORS.pencil }}>
+            {new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}
+          </span>
         </div>
-        {/* Mobil nav */}
-        <div className="md:hidden flex overflow-x-auto gap-1 px-3 pb-3">
+        {/* Ana isim (nameplate) */}
+        <div className="max-w-5xl mx-auto px-5 pt-4 pb-3 text-center">
+          <span className="font-display text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: COLORS.ink }}>
+            KPSS Hazırlık
+          </span>
+        </div>
+        {/* Nav şeridi */}
+        <nav
+          className="max-w-5xl mx-auto px-5 flex items-center justify-center gap-1 sm:gap-6 overflow-x-auto"
+          style={{ borderTop: `1px solid ${COLORS.ink}`, borderBottom: `1px solid ${COLORS.ink}` }}
+        >
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = page === item.id;
@@ -377,18 +396,18 @@ export default function KPSSPlatform() {
               <button
                 key={item.id}
                 onClick={() => setPage(item.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded whitespace-nowrap"
+                className="flex items-center gap-1.5 px-2.5 sm:px-1 py-3 text-xs sm:text-sm whitespace-nowrap font-semibold uppercase tracking-wide transition-colors"
                 style={{
-                  background: active ? COLORS.optikRed : "transparent",
-                  color: active ? "#fff" : "#D9D5C6",
-                  border: `1px solid ${active ? COLORS.optikRed : "#3d4560"}`,
+                  color: active ? COLORS.ink : COLORS.pencil,
+                  borderBottom: active ? `2px solid ${COLORS.optikRed}` : "2px solid transparent",
+                  marginBottom: -1,
                 }}
               >
                 <Icon size={13} /> {item.label}
               </button>
             );
           })}
-        </div>
+        </nav>
       </header>
 
       <main className="max-w-5xl mx-auto px-5 py-8">
@@ -403,6 +422,7 @@ export default function KPSSPlatform() {
             articles={articles}
             addArticle={addArticle}
             deleteArticle={deleteArticle}
+            recordAnswer={recordAnswer}
           />
         ) : page === "topics" ? (
           <TopicsPage customTopics={customTopics} addTopic={addTopic} />
@@ -424,12 +444,14 @@ export default function KPSSPlatform() {
 
 /* ------------------------------ ANA SAYFA ------------------------------ */
 
-function HomePage({ progress, setPage, articles, addArticle, deleteArticle }) {
+function HomePage({ progress, setPage, articles, addArticle, deleteArticle, recordAnswer }) {
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [openArticleId, setOpenArticleId] = useState(null);
 
   const totalSolved = progress.solvedIds.length;
+  const dailyQuestion = getDailyQuestion();
+  const todayLabel = new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 
   const filtered = query.trim()
     ? articles.filter(
@@ -441,21 +463,26 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle }) {
 
   return (
     <div>
-      {/* Gazete başlığı stilinde üst şerit */}
-      <div className="flex items-center justify-between pb-3 mb-5" style={{ borderBottom: `2px solid ${COLORS.ink}` }}>
-        <div className="flex items-center gap-2">
-          <Newspaper size={22} style={{ color: COLORS.optikRed }} />
-          <div>
-            <h1 className="font-display text-2xl font-bold leading-tight">Güncel Yazılar</h1>
-            <p className="font-mono text-xs" style={{ color: COLORS.pencil }}>
-              Duyurular · Ders Paylaşımları · Sınav Notları
-            </p>
-          </div>
+      {/* Günün Sorusu — editoryal kutu */}
+      <DailyQuestionCard question={dailyQuestion} recordAnswer={recordAnswer} />
+
+      {/* Bölüm başlığı */}
+      <div
+        className="flex items-end justify-between mt-9 mb-5 pb-2"
+        style={{ borderBottom: `2px solid ${COLORS.ink}` }}
+      >
+        <div>
+          <p className="font-mono text-[11px] tracking-widest uppercase mb-1" style={{ color: COLORS.pencil }}>
+            {todayLabel.toLocaleUpperCase("tr")}
+          </p>
+          <h1 className="font-display text-3xl font-bold tracking-tight" style={{ color: COLORS.ink }}>
+            Gündem
+          </h1>
         </div>
         <button
           onClick={() => setShowForm((s) => !s)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-medium text-white"
-          style={{ background: COLORS.optikRed }}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white shrink-0"
+          style={{ background: COLORS.ink }}
         >
           {showForm ? <X size={15} /> : <Plus size={15} />}
           {showForm ? "Vazgeç" : "Yeni Yazı"}
@@ -463,21 +490,21 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle }) {
       </div>
 
       {/* Arama */}
-      <div className="relative mb-5">
-        <Search size={16} style={{ color: COLORS.pencil, position: "absolute", left: 12, top: 12 }} />
+      <div className="relative mb-6">
+        <Search size={15} style={{ color: COLORS.pencil, position: "absolute", left: 12, top: 12 }} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Bir haberi ya da yazıyı ara…"
-          className="w-full pl-9 pr-3 py-2.5 rounded-md text-sm font-body outline-none"
+          className="w-full pl-9 pr-3 py-2.5 text-sm font-body outline-none"
           style={{ border: `1px solid ${COLORS.rule}`, background: "#fff", color: COLORS.ink }}
         />
       </div>
 
       {showForm && <ArticleForm onSubmit={(title, category, body) => { addArticle(title, category, body); setShowForm(false); }} />}
 
-      {/* Yazı listesi */}
-      <div className="space-y-3 mb-8">
+      {/* Yazı listesi — gazete ön sayfası düzeni */}
+      <div className="mb-8">
         {filtered.length === 0 ? (
           <p className="text-sm py-8 text-center" style={{ color: COLORS.pencil }}>
             "{query}" için bir sonuç bulunamadı.
@@ -486,7 +513,7 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle }) {
           filtered.map((a, i) => (
             <div key={a.id}>
               {i > 0 && i % 3 === 0 && (
-                <div className="mb-3">
+                <div className="my-5">
                   <AdSlot variant="banner" />
                 </div>
               )}
@@ -495,6 +522,7 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle }) {
                 open={openArticleId === a.id}
                 onToggle={() => setOpenArticleId(openArticleId === a.id ? null : a.id)}
                 onDelete={() => deleteArticle(a.id)}
+                isFirst={i === 0}
               />
             </div>
           ))
@@ -502,7 +530,7 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle }) {
       </div>
 
       {/* Çalışma kısayolları */}
-      <div className="pt-5" style={{ borderTop: `1px solid ${COLORS.rule}` }}>
+      <div className="pt-6" style={{ borderTop: `1px solid ${COLORS.rule}` }}>
         <p className="font-mono text-xs tracking-widest mb-3" style={{ color: COLORS.pencil }}>
           ÇALIŞMA KISAYOLLARI
         </p>
@@ -525,13 +553,76 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle }) {
   );
 }
 
+function DailyQuestionCard({ question, recordAnswer }) {
+  const [selected, setSelected] = useState(null);
+  const revealed = selected !== null;
+
+  const handleSelect = (idx) => {
+    if (revealed) return;
+    setSelected(idx);
+    recordAnswer(question, idx === question.correct);
+  };
+
+  return (
+    <div
+      className="p-5 sm:p-6 relative"
+      style={{ background: COLORS.paperDark, borderTop: `3px double ${COLORS.ink}`, borderBottom: `3px double ${COLORS.ink}` }}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className="font-mono text-[11px] tracking-widest uppercase px-2 py-0.5 text-white"
+          style={{ background: COLORS.ink }}
+        >
+          Günün Sorusu
+        </span>
+        <span className="font-mono text-xs" style={{ color: COLORS.pencil }}>
+          {question.category} · sınavda çıkabilir
+        </span>
+      </div>
+      <p className="font-display font-semibold text-lg mb-4" style={{ color: COLORS.ink }}>
+        {question.q}
+      </p>
+      <div className="space-y-2.5">
+        {question.options.map((opt, idx) => (
+          <div key={idx} className="flex items-center gap-3">
+            <OptikBubble
+              letter={OPTION_LETTERS[idx]}
+              selected={selected === idx}
+              correct={idx === question.correct}
+              revealed={revealed}
+              disabled={revealed}
+              onClick={() => handleSelect(idx)}
+            />
+            <span className="text-sm" style={{ color: COLORS.ink }}>
+              {opt}
+            </span>
+          </div>
+        ))}
+      </div>
+      {revealed && (
+        <div
+          className="mt-4 text-sm p-3.5 flex items-start gap-2"
+          style={{ background: "#fff", color: COLORS.ink, border: `1px solid ${COLORS.rule}` }}
+        >
+          {selected === question.correct ? (
+            <CheckCircle2 size={16} style={{ color: COLORS.sage, flexShrink: 0, marginTop: 2 }} />
+          ) : (
+            <XCircle size={16} style={{ color: COLORS.danger, flexShrink: 0, marginTop: 2 }} />
+          )}
+          <span>{question.explain}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ArticleForm({ onSubmit }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Duyuru");
   const [body, setBody] = useState("");
 
   return (
-    <div className="rounded-md p-4 mb-5" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+    <div className="rounded-sm p-4 mb-5" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
       <div className="grid sm:grid-cols-2 gap-3 mb-3">
         <input
           value={title}
@@ -580,31 +671,44 @@ function ArticleForm({ onSubmit }) {
   );
 }
 
-function ArticleCard({ article, open, onToggle, onDelete }) {
+function ArticleCard({ article, open, onToggle, onDelete, isFirst }) {
   return (
-    <div className="rounded-md p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+    <div className={isFirst ? "pb-6 mb-6" : "py-5"} style={{ borderBottom: isFirst ? `1px solid ${COLORS.rule}` : `1px solid ${COLORS.rule}` }}>
       <div className="flex items-start justify-between gap-3">
-        <button onClick={onToggle} className="text-left flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: COLORS.sageBg, color: COLORS.sage }}>
+        <button onClick={onToggle} className="text-left flex-1 group">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span
+              className="font-mono text-[11px] tracking-wide px-1.5 py-0.5 font-semibold uppercase"
+              style={{ background: COLORS.ink, color: "#fff" }}
+            >
               {article.category}
             </span>
             <span className="font-mono text-xs" style={{ color: COLORS.pencil }}>
               {article.date}
             </span>
           </div>
-          <h3 className="font-display font-semibold text-lg">{article.title}</h3>
-          {!open && (
-            <p className="text-sm mt-1 line-clamp-2" style={{ color: COLORS.pencil }}>
+          <h3
+            className={`font-display font-bold leading-snug group-hover:opacity-70 transition-opacity ${isFirst ? "text-2xl sm:text-3xl" : "text-xl"}`}
+            style={{ color: COLORS.ink }}
+          >
+            {article.title}
+          </h3>
+          {(!open || isFirst) && (
+            <p className={`mt-2 ${isFirst ? "text-base" : "text-sm line-clamp-2 mt-1.5"}`} style={{ color: COLORS.pencil }}>
               {article.body}
             </p>
           )}
+          {!open && (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold mt-2" style={{ color: COLORS.optikRed }}>
+              Devamını oku <ChevronRight size={13} />
+            </span>
+          )}
         </button>
-        <button onClick={onDelete} aria-label="Yazıyı sil" style={{ color: COLORS.pencil }}>
+        <button onClick={onDelete} aria-label="Yazıyı sil" style={{ color: COLORS.pencil }} className="mt-1 shrink-0">
           <Trash2 size={15} />
         </button>
       </div>
-      {open && (
+      {open && !isFirst && (
         <p className="text-sm mt-3 leading-relaxed" style={{ color: COLORS.pencil }}>
           {article.body}
         </p>
@@ -615,7 +719,7 @@ function ArticleCard({ article, open, onToggle, onDelete }) {
 
 function StatCard({ label, value }) {
   return (
-    <div className="rounded-md p-4 text-center" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+    <div className="rounded-sm p-4 text-center" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
       <div className="font-mono text-2xl font-semibold" style={{ color: COLORS.ink }}>
         {value}
       </div>
@@ -630,8 +734,8 @@ function NavCard({ icon: Icon, title, desc, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="text-left rounded-md p-4 transition-transform hover:-translate-y-0.5"
-      style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}
+      className="text-left rounded-sm p-4 transition-transform hover:-translate-y-0.5"
+      style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}
     >
       <Icon size={20} style={{ color: COLORS.optikRed }} />
       <div className="font-display font-semibold mt-2" style={{ color: COLORS.ink }}>
@@ -684,15 +788,15 @@ function TopicsPage({ customTopics, addTopic }) {
         {allTopics.map((t) => {
           const open = openId === t.id;
           return (
-            <div key={t.id} className="rounded-md overflow-hidden" style={{ border: `1px solid ${COLORS.rule}`, background: "#fff" }}>
+            <div key={t.id} className="rounded-sm overflow-hidden" style={{ border: `1px solid ${COLORS.rule}`, background: "#fff" }}>
               <button
                 onClick={() => setOpenId(open ? null : t.id)}
                 className="w-full flex items-center justify-between px-4 py-3 text-left"
               >
                 <div>
                   <span
-                    className="font-mono text-xs px-2 py-0.5 rounded mr-2"
-                    style={{ background: COLORS.sageBg, color: COLORS.sage }}
+                    className="font-mono text-[11px] px-1.5 py-0.5 mr-2 font-semibold uppercase"
+                    style={{ background: COLORS.ink, color: "#fff" }}
                   >
                     {t.category}
                   </span>
@@ -719,7 +823,7 @@ function TopicForm({ onSubmit }) {
   const [body, setBody] = useState("");
 
   return (
-    <div className="rounded-md p-4 mb-5" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+    <div className="rounded-sm p-4 mb-5" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
       <div className="grid sm:grid-cols-2 gap-3 mb-3">
         <select
           value={category}
@@ -794,7 +898,7 @@ function BankPage({ progress, recordAnswer }) {
           <button
             key={c}
             onClick={() => setCategory(c)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium"
+            className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide"
             style={{
               background: category === c ? COLORS.ink : "#fff",
               color: category === c ? "#fff" : COLORS.ink,
@@ -817,7 +921,7 @@ function BankPage({ progress, recordAnswer }) {
                 <AdSlot variant="banner" />
               </div>
             )}
-            <div className="rounded-md p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+            <div className="rounded-sm p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
               <div className="flex items-start gap-2 mb-3">
                 <span className="font-mono text-xs mt-0.5" style={{ color: COLORS.pencil }}>
                   {String(i + 1).padStart(2, "0")}
@@ -852,7 +956,7 @@ function BankPage({ progress, recordAnswer }) {
                   {selected === question.correct ? (
                     <CheckCircle2 size={16} style={{ color: COLORS.sage, flexShrink: 0, marginTop: 2 }} />
                   ) : (
-                    <XCircle size={16} style={{ color: COLORS.optikRed, flexShrink: 0, marginTop: 2 }} />
+                    <XCircle size={16} style={{ color: COLORS.danger, flexShrink: 0, marginTop: 2 }} />
                   )}
                   <span>{question.explain}</span>
                 </div>
@@ -963,7 +1067,7 @@ function ExamPage({ recordExamResult }) {
           {examQuestions.map((question, i) => {
             const selected = answers[question.id];
             return (
-              <div key={question.id} className="rounded-md p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+              <div key={question.id} className="rounded-sm p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
                 <div className="flex items-start gap-2 mb-3">
                   <span className="font-mono text-xs mt-0.5" style={{ color: COLORS.pencil }}>
                     {String(i + 1).padStart(2, "0")}
@@ -1012,14 +1116,14 @@ function ExamPage({ recordExamResult }) {
         <span className="text-sm">
           Cevaplanan: <span className="font-mono">{answeredCount}/{examQuestions.length}</span>
         </span>
-        <span className="font-mono text-lg font-semibold" style={{ color: timeLeft < 60 ? COLORS.optikRed : "#fff" }}>
+        <span className="font-mono text-lg font-semibold" style={{ color: timeLeft < 60 ? COLORS.danger : "#fff" }}>
           {mm}:{ss}
         </span>
       </div>
 
       <div className="space-y-4">
         {examQuestions.map((question, i) => (
-          <div key={question.id} className="rounded-md p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+          <div key={question.id} className="rounded-sm p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
             <div className="flex items-start gap-2 mb-3">
               <span className="font-mono text-xs mt-0.5" style={{ color: COLORS.pencil }}>
                 {String(i + 1).padStart(2, "0")}
@@ -1087,7 +1191,7 @@ function ProgressPage({ progress }) {
         {cats.map((c) => {
           const pct = c.total > 0 ? Math.round((c.correct / c.total) * 100) : 0;
           return (
-            <div key={c.name} className="rounded-md p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+            <div key={c.name} className="rounded-sm p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-medium">{c.name}</span>
                 <span className="font-mono" style={{ color: COLORS.pencil }}>
@@ -1097,7 +1201,7 @@ function ProgressPage({ progress }) {
               <div className="h-2 rounded-full overflow-hidden" style={{ background: COLORS.paperDark }}>
                 <div
                   className="h-full rounded-full transition-all"
-                  style={{ width: `${pct}%`, background: pct >= 70 ? COLORS.sage : pct >= 40 ? "#B8860B" : COLORS.optikRed }}
+                  style={{ width: `${pct}%`, background: pct >= 70 ? COLORS.sage : pct >= 40 ? COLORS.warning : COLORS.danger }}
                 />
               </div>
             </div>
