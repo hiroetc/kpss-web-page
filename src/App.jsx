@@ -372,16 +372,21 @@ export default function KPSSPlatform() {
           style={{ borderBottom: `1px solid ${COLORS.rule}` }}
         >
           <span className="font-mono text-[11px] tracking-widest uppercase" style={{ color: COLORS.pencil }}>
-            KPSS Hazırlık Yayın Ağı
+            Atanova Yayın Ağı
           </span>
           <span className="font-mono text-[11px]" style={{ color: COLORS.pencil }}>
             {new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}
           </span>
         </div>
         {/* Ana isim (nameplate) */}
-        <div className="max-w-5xl mx-auto px-5 pt-4 pb-3 text-center">
+        <div className="max-w-5xl mx-auto px-5 pt-4 pb-1 text-center">
           <span className="font-display text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: COLORS.ink }}>
-            KPSS Hazırlık
+            Atanova
+          </span>
+        </div>
+        <div className="max-w-5xl mx-auto px-5 pb-3 text-center">
+          <span className="font-mono text-[11px] tracking-widest uppercase" style={{ color: COLORS.pencil }}>
+            KPSS Hazırlık Platformu
           </span>
         </div>
         {/* Nav şeridi */}
@@ -449,7 +454,6 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle, reco
   const [showForm, setShowForm] = useState(false);
   const [openArticleId, setOpenArticleId] = useState(null);
 
-  const totalSolved = progress.solvedIds.length;
   const dailyQuestion = getDailyQuestion();
   const todayLabel = new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -462,99 +466,86 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle, reco
     : articles;
 
   return (
-    <div>
-      {/* Günün Sorusu — editoryal kutu */}
-      <DailyQuestionCard question={dailyQuestion} recordAnswer={recordAnswer} />
-
-      {/* Bölüm başlığı */}
-      <div
-        className="flex items-end justify-between mt-9 mb-5 pb-2"
-        style={{ borderBottom: `2px solid ${COLORS.ink}` }}
-      >
-        <div>
-          <p className="font-mono text-[11px] tracking-widest uppercase mb-1" style={{ color: COLORS.pencil }}>
-            {todayLabel.toLocaleUpperCase("tr")}
-          </p>
-          <h1 className="font-display text-3xl font-bold tracking-tight" style={{ color: COLORS.ink }}>
-            Gündem
-          </h1>
-        </div>
-        <button
-          onClick={() => setShowForm((s) => !s)}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white shrink-0"
-          style={{ background: COLORS.ink }}
+    <div className="lg:grid lg:grid-cols-[1fr_280px] lg:gap-10 lg:items-start">
+      {/* ANA SÜTUN — sadece haber akışı */}
+      <div>
+        {/* Bölüm başlığı */}
+        <div
+          className="flex items-end justify-between mb-5 pb-2"
+          style={{ borderBottom: `2px solid ${COLORS.ink}` }}
         >
-          {showForm ? <X size={15} /> : <Plus size={15} />}
-          {showForm ? "Vazgeç" : "Yeni Yazı"}
-        </button>
-      </div>
-
-      {/* Arama */}
-      <div className="relative mb-6">
-        <Search size={15} style={{ color: COLORS.pencil, position: "absolute", left: 12, top: 12 }} />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Bir haberi ya da yazıyı ara…"
-          className="w-full pl-9 pr-3 py-2.5 text-sm font-body outline-none"
-          style={{ border: `1px solid ${COLORS.rule}`, background: "#fff", color: COLORS.ink }}
-        />
-      </div>
-
-      {showForm && <ArticleForm onSubmit={(title, category, body) => { addArticle(title, category, body); setShowForm(false); }} />}
-
-      {/* Yazı listesi — gazete ön sayfası düzeni */}
-      <div className="mb-8">
-        {filtered.length === 0 ? (
-          <p className="text-sm py-8 text-center" style={{ color: COLORS.pencil }}>
-            "{query}" için bir sonuç bulunamadı.
-          </p>
-        ) : (
-          filtered.map((a, i) => (
-            <div key={a.id}>
-              {i > 0 && i % 3 === 0 && (
-                <div className="my-5">
-                  <AdSlot variant="banner" />
-                </div>
-              )}
-              <ArticleCard
-                article={a}
-                open={openArticleId === a.id}
-                onToggle={() => setOpenArticleId(openArticleId === a.id ? null : a.id)}
-                onDelete={() => deleteArticle(a.id)}
-                isFirst={i === 0}
-              />
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Çalışma kısayolları */}
-      <div className="pt-6" style={{ borderTop: `1px solid ${COLORS.rule}` }}>
-        <p className="font-mono text-xs tracking-widest mb-3" style={{ color: COLORS.pencil }}>
-          ÇALIŞMA KISAYOLLARI
-        </p>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <NavCard icon={BookOpen} title="Konu Anlatımı" desc="Kategoriye göre kısa özetler ve eklediğin dersler." onClick={() => setPage("topics")} />
-          <NavCard icon={PenLine} title="Soru Bankası" desc="Anında geri bildirimli pratik sorular." onClick={() => setPage("bank")} />
-          <NavCard icon={Clock} title="Deneme Sınavı" desc="15 dakikalık, 20 soruluk gerçek sınav temposu." onClick={() => setPage("exam")} />
+          <div>
+            <p className="font-mono text-[11px] tracking-widest uppercase mb-1" style={{ color: COLORS.pencil }}>
+              {todayLabel.toLocaleUpperCase("tr")}
+            </p>
+            <h1 className="font-display text-3xl font-bold tracking-tight" style={{ color: COLORS.ink }}>
+              Gündem
+            </h1>
+          </div>
+          <button
+            onClick={() => setShowForm((s) => !s)}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white shrink-0"
+            style={{ background: COLORS.ink }}
+          >
+            {showForm ? <X size={15} /> : <Plus size={15} />}
+            {showForm ? "Vazgeç" : "Yeni Yazı"}
+          </button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-          <StatCard label="Çözülen Soru" value={totalSolved} />
-          <StatCard label="Deneme Denemesi" value={progress.examAttempts} />
-          <StatCard
-            label="En İyi Deneme"
-            value={progress.bestExamScore ? `${progress.bestExamScore.correct}/${progress.bestExamScore.total}` : "—"}
+
+        {/* Arama */}
+        <div className="relative mb-6">
+          <Search size={15} style={{ color: COLORS.pencil, position: "absolute", left: 12, top: 12 }} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Bir haberi ya da yazıyı ara…"
+            className="w-full pl-9 pr-3 py-2.5 text-sm font-body outline-none"
+            style={{ border: `1px solid ${COLORS.rule}`, background: "#fff", color: COLORS.ink }}
           />
-          <StatCard label="Paylaşılan Yazı" value={articles.length} />
+        </div>
+
+        {showForm && <ArticleForm onSubmit={(title, category, body) => { addArticle(title, category, body); setShowForm(false); }} />}
+
+        {/* Yazı listesi — gazete ön sayfası düzeni */}
+        <div>
+          {filtered.length === 0 ? (
+            <p className="text-sm py-8 text-center" style={{ color: COLORS.pencil }}>
+              "{query}" için bir sonuç bulunamadı.
+            </p>
+          ) : (
+            filtered.map((a, i) => (
+              <div key={a.id}>
+                {i > 0 && i % 3 === 0 && (
+                  <div className="my-5">
+                    <AdSlot variant="banner" />
+                  </div>
+                )}
+                <ArticleCard
+                  article={a}
+                  open={openArticleId === a.id}
+                  onToggle={() => setOpenArticleId(openArticleId === a.id ? null : a.id)}
+                  onDelete={() => deleteArticle(a.id)}
+                  isFirst={i === 0}
+                />
+              </div>
+            ))
+          )}
         </div>
       </div>
+
+      {/* YAN SÜTUN — küçük, sabit duran Günün Sorusu widget'ı */}
+      <aside className="mt-8 lg:mt-0">
+        <div className="lg:sticky lg:top-24">
+          <DailyQuestionWidget question={dailyQuestion} recordAnswer={recordAnswer} />
+        </div>
+      </aside>
     </div>
   );
 }
 
-function DailyQuestionCard({ question, recordAnswer }) {
+function DailyQuestionWidget({ question, recordAnswer }) {
   const [selected, setSelected] = useState(null);
+  const [dismissed, setDismissed] = useState(false);
   const revealed = selected !== null;
 
   const handleSelect = (idx) => {
@@ -563,28 +554,30 @@ function DailyQuestionCard({ question, recordAnswer }) {
     recordAnswer(question, idx === question.correct);
   };
 
+  if (dismissed) return null;
+
   return (
-    <div
-      className="p-5 sm:p-6 relative"
-      style={{ background: COLORS.paperDark, borderTop: `3px double ${COLORS.ink}`, borderBottom: `3px double ${COLORS.ink}` }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <span
-          className="font-mono text-[11px] tracking-widest uppercase px-2 py-0.5 text-white"
-          style={{ background: COLORS.ink }}
-        >
-          Günün Sorusu
-        </span>
-        <span className="font-mono text-xs" style={{ color: COLORS.pencil }}>
-          {question.category} · sınavda çıkabilir
-        </span>
-      </div>
-      <p className="font-display font-semibold text-lg mb-4" style={{ color: COLORS.ink }}>
+    <div className="p-4 relative" style={{ background: COLORS.paperDark, border: `1px solid ${COLORS.ink}` }}>
+      <button
+        onClick={() => setDismissed(true)}
+        aria-label="Kapat"
+        className="absolute top-2 right-2"
+        style={{ color: COLORS.pencil }}
+      >
+        <X size={14} />
+      </button>
+      <span
+        className="font-mono text-[10px] tracking-widest uppercase px-1.5 py-0.5 text-white inline-block mb-2.5"
+        style={{ background: COLORS.ink }}
+      >
+        Günün Sorusu
+      </span>
+      <p className="font-display font-semibold text-sm leading-snug mb-3 pr-4" style={{ color: COLORS.ink }}>
         {question.q}
       </p>
-      <div className="space-y-2.5">
+      <div className="space-y-1.5">
         {question.options.map((opt, idx) => (
-          <div key={idx} className="flex items-center gap-3">
+          <div key={idx} className="flex items-center gap-2">
             <OptikBubble
               letter={OPTION_LETTERS[idx]}
               selected={selected === idx}
@@ -593,7 +586,7 @@ function DailyQuestionCard({ question, recordAnswer }) {
               disabled={revealed}
               onClick={() => handleSelect(idx)}
             />
-            <span className="text-sm" style={{ color: COLORS.ink }}>
+            <span className="text-xs leading-snug" style={{ color: COLORS.ink }}>
               {opt}
             </span>
           </div>
@@ -601,13 +594,13 @@ function DailyQuestionCard({ question, recordAnswer }) {
       </div>
       {revealed && (
         <div
-          className="mt-4 text-sm p-3.5 flex items-start gap-2"
-          style={{ background: "#fff", color: COLORS.ink, border: `1px solid ${COLORS.rule}` }}
+          className="mt-3 text-xs p-2.5 flex items-start gap-1.5"
+          style={{ background: "#fff", color: COLORS.pencil, border: `1px solid ${COLORS.rule}` }}
         >
           {selected === question.correct ? (
-            <CheckCircle2 size={16} style={{ color: COLORS.sage, flexShrink: 0, marginTop: 2 }} />
+            <CheckCircle2 size={13} style={{ color: COLORS.sage, flexShrink: 0, marginTop: 1 }} />
           ) : (
-            <XCircle size={16} style={{ color: COLORS.danger, flexShrink: 0, marginTop: 2 }} />
+            <XCircle size={13} style={{ color: COLORS.danger, flexShrink: 0, marginTop: 1 }} />
           )}
           <span>{question.explain}</span>
         </div>
