@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Home, BookOpen, PenLine, Clock, BarChart3, CheckCircle2, XCircle, RotateCcw, ChevronRight, Award, Search, Plus, Newspaper, X, Trash2 } from "lucide-react";
+import { Home, BookOpen, PenLine, Clock, BarChart3, CheckCircle2, XCircle, RotateCcw, ChevronRight, ChevronLeft, Award, Search, Plus, Newspaper, X, Trash2 } from "lucide-react";
 
 /* ------------------------------------------------------------------
    TASARIM SİSTEMİ
@@ -132,11 +132,11 @@ const SEED_ARTICLES = [
   },
 ];
 
-function getDailyQuestion() {
+function getDailyQuestion(pool) {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
   const dayOfYear = Math.floor((now - start) / 86400000);
-  return QUESTIONS[dayOfYear % QUESTIONS.length];
+  return pool[dayOfYear % pool.length];
 }
 
 const CATEGORIES = [...new Set(QUESTIONS.map((q) => q.category))];
@@ -247,11 +247,17 @@ const NAV_ITEMS = [
   { id: "progress", label: "İlerleme", icon: BarChart3 },
 ];
 
+// Bu şifreyi kendi belirleyeceğin bir şifreyle değiştir.
+// Bu basit bir istemci-taraflı engelleyicidir, gerçek bir güvenlik katmanı değildir.
+const ADMIN_PASSWORD = "atanova2026";
+
 export default function KPSSPlatform() {
   const [page, setPage] = useState("home");
   const [progress, setProgress] = useState(DEFAULT_PROGRESS);
   const [articles, setArticles] = useState(SEED_ARTICLES);
   const [customTopics, setCustomTopics] = useState([]);
+  const [customQuestions, setCustomQuestions] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -279,10 +285,56 @@ export default function KPSSPlatform() {
         }
       } catch (e) {
         // henüz eklenmiş ders yok
+      }
+      try {
+        const res = await window.storage.get("kpss-custom-questions", true);
+        if (res && res.value) {
+          setCustomQuestions(JSON.parse(res.value));
+        }
+      } catch (e) {
+        // henüz eklenmiş soru yok
+      }
+      try {
+        const res = await window.storage.get("kpss-admin", false);
+        if (res && res.value === "true") {
+          setIsAdmin(true);
+        }
+      } catch (e) {
+        // giriş yapılmamış
       } finally {
         setLoaded(true);
       }
     })();
+  }, []);
+
+  const unlockAdmin = useCallback((password) => {
+    if (password === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      window.storage.set("kpss-admin", "true", false).catch(() => {});
+      return true;
+    }
+    return false;
+  }, []);
+
+  const lockAdmin = useCallback(() => {
+    setIsAdmin(false);
+    window.storage.set("kpss-admin", "false", false).catch(() => {});
+  }, []);
+
+  const addQuestion = useCallback((category, q, options, correct, explain) => {
+    setCustomQuestions((prev) => {
+      const next = [{ id: `cq${Date.now()}`, category, q, options, correct, explain }, ...prev];
+      window.storage.set("kpss-custom-questions", JSON.stringify(next), true).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const deleteQuestion = useCallback((id) => {
+    setCustomQuestions((prev) => {
+      const next = prev.filter((q) => q.id !== id);
+      window.storage.set("kpss-custom-questions", JSON.stringify(next), true).catch(() => {});
+      return next;
+    });
   }, []);
 
   const addArticle = useCallback((title, category, body) => {
@@ -428,33 +480,90 @@ export default function KPSSPlatform() {
             addArticle={addArticle}
             deleteArticle={deleteArticle}
             recordAnswer={recordAnswer}
+            isAdmin={isAdmin}
+            customQuestions={customQuestions}
           />
         ) : page === "topics" ? (
-          <TopicsPage customTopics={customTopics} addTopic={addTopic} />
+          <TopicsPage customTopics={customTopics} addTopic={addTopic} isAdmin={isAdmin} />
         ) : page === "bank" ? (
-          <BankPage progress={progress} recordAnswer={recordAnswer} />
+          <BankPage
+            progress={progress}
+            recordAnswer={recordAnswer}
+            customQuestions={customQuestions}
+            addQuestion={addQuestion}
+            deleteQuestion={deleteQuestion}
+            isAdmin={isAdmin}
+          />
         ) : page === "exam" ? (
-          <ExamPage recordExamResult={recordExamResult} />
+          <ExamPage recordExamResult={recordExamResult} customQuestions={customQuestions} />
         ) : (
           <ProgressPage progress={progress} />
         )}
       </main>
 
-      <footer className="max-w-5xl mx-auto px-5 pb-8 pt-2 text-xs" style={{ color: COLORS.pencil }}>
-        Bu içerikler genel tekrar amaçlıdır; güncel mevzuat ve resmi kaynaklarla teyit ediniz.
+      <footer className="max-w-5xl mx-auto px-5 pb-8 pt-2 text-xs flex items-center justify-between" style={{ color: COLORS.pencil }}>
+        <span>Bu içerikler genel tekrar amaçlıdır; güncel mevzuat ve resmi kaynaklarla teyit ediniz.</span>
+        <AdminGate isAdmin={isAdmin} onUnlock={unlockAdmin} onLock={lockAdmin} />
       </footer>
+    </div>
+  );
+}
+
+function AdminGate({ isAdmin, onUnlock, onLock }) {
+  const [showForm, setShowForm] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(false);
+
+  if (isAdmin) {
+    return (
+      <button onClick={onLock} className="underline shrink-0 ml-3">
+        Yönetici çıkışı
+      </button>
+    );
+  }
+
+  if (!showForm) {
+    return (
+      <button onClick={() => setShowForm(true)} className="underline shrink-0 ml-3">
+        Yönetici girişi
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 shrink-0 ml-3">
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => { setPassword(e.target.value); setError(false); }}
+        placeholder="Şifre"
+        className="px-2 py-1 text-xs w-24"
+        style={{ border: `1px solid ${error ? COLORS.danger : COLORS.rule}` }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            if (!onUnlock(password)) setError(true);
+          }
+        }}
+      />
+      <button
+        onClick={() => { if (!onUnlock(password)) setError(true); }}
+        className="text-xs font-semibold"
+        style={{ color: COLORS.optikRed }}
+      >
+        Gir
+      </button>
     </div>
   );
 }
 
 /* ------------------------------ ANA SAYFA ------------------------------ */
 
-function HomePage({ progress, setPage, articles, addArticle, deleteArticle, recordAnswer }) {
+function HomePage({ progress, setPage, articles, addArticle, deleteArticle, recordAnswer, isAdmin, customQuestions }) {
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [openArticleId, setOpenArticleId] = useState(null);
 
-  const dailyQuestion = getDailyQuestion();
+  const dailyQuestion = getDailyQuestion([...QUESTIONS, ...customQuestions]);
   const todayLabel = new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 
   const filtered = query.trim()
@@ -482,14 +591,16 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle, reco
               Gündem
             </h1>
           </div>
-          <button
-            onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white shrink-0"
-            style={{ background: COLORS.ink }}
-          >
-            {showForm ? <X size={15} /> : <Plus size={15} />}
-            {showForm ? "Vazgeç" : "Yeni Yazı"}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowForm((s) => !s)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white shrink-0"
+              style={{ background: COLORS.ink }}
+            >
+              {showForm ? <X size={15} /> : <Plus size={15} />}
+              {showForm ? "Vazgeç" : "Yeni Yazı"}
+            </button>
+          )}
         </div>
 
         {/* Arama */}
@@ -504,7 +615,7 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle, reco
           />
         </div>
 
-        {showForm && <ArticleForm onSubmit={(title, category, body) => { addArticle(title, category, body); setShowForm(false); }} />}
+        {isAdmin && showForm && <ArticleForm onSubmit={(title, category, body) => { addArticle(title, category, body); setShowForm(false); }} />}
 
         {/* Yazı listesi — gazete ön sayfası düzeni */}
         <div>
@@ -526,6 +637,7 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle, reco
                   onToggle={() => setOpenArticleId(openArticleId === a.id ? null : a.id)}
                   onDelete={() => deleteArticle(a.id)}
                   isFirst={i === 0}
+                  isAdmin={isAdmin}
                 />
               </div>
             ))
@@ -664,7 +776,7 @@ function ArticleForm({ onSubmit }) {
   );
 }
 
-function ArticleCard({ article, open, onToggle, onDelete, isFirst }) {
+function ArticleCard({ article, open, onToggle, onDelete, isFirst, isAdmin }) {
   return (
     <div className={isFirst ? "pb-6 mb-6" : "py-5"} style={{ borderBottom: isFirst ? `1px solid ${COLORS.rule}` : `1px solid ${COLORS.rule}` }}>
       <div className="flex items-start justify-between gap-3">
@@ -697,9 +809,11 @@ function ArticleCard({ article, open, onToggle, onDelete, isFirst }) {
             </span>
           )}
         </button>
-        <button onClick={onDelete} aria-label="Yazıyı sil" style={{ color: COLORS.pencil }} className="mt-1 shrink-0">
-          <Trash2 size={15} />
-        </button>
+        {isAdmin && (
+          <button onClick={onDelete} aria-label="Yazıyı sil" style={{ color: COLORS.pencil }} className="mt-1 shrink-0">
+            <Trash2 size={15} />
+          </button>
+        )}
       </div>
       {open && !isFirst && (
         <p className="text-sm mt-3 leading-relaxed" style={{ color: COLORS.pencil }}>
@@ -746,30 +860,100 @@ function NavCard({ icon: Icon, title, desc, onClick }) {
 
 /* ---------------------------- KONU ANLATIMI ---------------------------- */
 
-function TopicsPage({ customTopics, addTopic }) {
-  const [openId, setOpenId] = useState(TOPICS[0].id);
+function TopicsPage({ customTopics, addTopic, isAdmin }) {
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [openId, setOpenId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const allTopics = [...customTopics, ...TOPICS];
+  const topicCategories = [...new Set(allTopics.map((t) => t.category))];
+
+  if (!selectedCategory) {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="font-display text-2xl font-bold">Konu Anlatımı</h2>
+          {isAdmin && (
+            <button
+              onClick={() => setShowForm((s) => !s)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white"
+              style={{ background: COLORS.ink }}
+            >
+              {showForm ? <X size={13} /> : <Plus size={13} />}
+              {showForm ? "Vazgeç" : "Ders Ekle"}
+            </button>
+          )}
+        </div>
+        <p className="text-sm mb-5" style={{ color: COLORS.pencil }}>
+          Bir kategori seç, içindeki dersleri gör.
+        </p>
+
+        {isAdmin && showForm && (
+          <TopicForm
+            onSubmit={(category, title, body) => {
+              addTopic(category, title, body);
+              setShowForm(false);
+            }}
+          />
+        )}
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          {topicCategories.map((cat) => {
+            const count = allTopics.filter((t) => t.category === cat).length;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className="text-left p-4 flex items-center justify-between"
+                style={{ border: `1px solid ${COLORS.rule}`, background: "#fff" }}
+              >
+                <div>
+                  <span className="font-display font-bold text-lg" style={{ color: COLORS.ink }}>
+                    {cat}
+                  </span>
+                  <div className="font-mono text-xs mt-1" style={{ color: COLORS.pencil }}>
+                    {count} ders
+                  </div>
+                </div>
+                <ChevronRight size={18} style={{ color: COLORS.pencil }} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const topicsInCategory = allTopics.filter((t) => t.category === selectedCategory);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="font-display text-2xl font-bold">Konu Anlatımı</h2>
-        <button
-          onClick={() => setShowForm((s) => !s)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-white"
-          style={{ background: COLORS.optikRed }}
-        >
-          {showForm ? <X size={13} /> : <Plus size={13} />}
-          {showForm ? "Vazgeç" : "Ders Ekle"}
-        </button>
-      </div>
-      <p className="text-sm mb-5" style={{ color: COLORS.pencil }}>
-        Kategoriye göre kısa özetler. Başlığa tıklayarak içeriği aç.
-      </p>
+      <button
+        onClick={() => { setSelectedCategory(null); setOpenId(null); setShowForm(false); }}
+        className="flex items-center gap-1 text-sm mb-4 font-medium"
+        style={{ color: COLORS.pencil }}
+      >
+        <ChevronLeft size={15} /> Kategorilere dön
+      </button>
 
-      {showForm && (
+      <div className="flex items-center justify-between mb-5 pb-2" style={{ borderBottom: `2px solid ${COLORS.ink}` }}>
+        <h2 className="font-display text-2xl font-bold" style={{ color: COLORS.ink }}>
+          {selectedCategory}
+        </h2>
+        {isAdmin && (
+          <button
+            onClick={() => setShowForm((s) => !s)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white"
+            style={{ background: COLORS.ink }}
+          >
+            {showForm ? <X size={13} /> : <Plus size={13} />}
+            {showForm ? "Vazgeç" : "Ders Ekle"}
+          </button>
+        )}
+      </div>
+
+      {isAdmin && showForm && (
         <TopicForm
+          defaultCategory={selectedCategory}
           onSubmit={(category, title, body) => {
             addTopic(category, title, body);
             setShowForm(false);
@@ -778,29 +962,23 @@ function TopicsPage({ customTopics, addTopic }) {
       )}
 
       <div className="space-y-2">
-        {allTopics.map((t) => {
+        {topicsInCategory.map((t) => {
           const open = openId === t.id;
           return (
-            <div key={t.id} className="rounded-sm overflow-hidden" style={{ border: `1px solid ${COLORS.rule}`, background: "#fff" }}>
+            <div key={t.id} style={{ borderBottom: `1px solid ${COLORS.rule}` }}>
               <button
                 onClick={() => setOpenId(open ? null : t.id)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left"
+                className="w-full flex items-center justify-between py-3.5 text-left"
               >
-                <div>
-                  <span
-                    className="font-mono text-[11px] px-1.5 py-0.5 mr-2 font-semibold uppercase"
-                    style={{ background: COLORS.ink, color: "#fff" }}
-                  >
-                    {t.category}
-                  </span>
-                  <span className="font-display font-semibold">{t.title}</span>
-                </div>
-                <ChevronRight size={16} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
+                <span className="font-display font-semibold" style={{ color: COLORS.ink }}>
+                  {t.title}
+                </span>
+                <ChevronRight size={16} style={{ color: COLORS.pencil, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
               </button>
               {open && (
-                <div className="px-4 pb-4 text-sm leading-relaxed" style={{ color: COLORS.pencil, borderTop: `1px solid ${COLORS.rule}` }}>
-                  <p className="pt-3">{t.body}</p>
-                </div>
+                <p className="text-sm leading-relaxed pb-4" style={{ color: COLORS.pencil }}>
+                  {t.body}
+                </p>
               )}
             </div>
           );
@@ -810,8 +988,8 @@ function TopicsPage({ customTopics, addTopic }) {
   );
 }
 
-function TopicForm({ onSubmit }) {
-  const [category, setCategory] = useState(CATEGORIES[0]);
+function TopicForm({ onSubmit, defaultCategory }) {
+  const [category, setCategory] = useState(defaultCategory || CATEGORIES[0]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
 
@@ -867,11 +1045,13 @@ function TopicForm({ onSubmit }) {
 
 /* ----------------------------- SORU BANKASI ----------------------------- */
 
-function BankPage({ progress, recordAnswer }) {
+function BankPage({ progress, recordAnswer, customQuestions, addQuestion, deleteQuestion, isAdmin }) {
   const [category, setCategory] = useState("Tümü");
   const [answers, setAnswers] = useState({}); // qid -> selectedIndex
+  const [showForm, setShowForm] = useState(false);
 
-  const filtered = category === "Tümü" ? QUESTIONS : QUESTIONS.filter((q) => q.category === category);
+  const allQuestions = [...QUESTIONS, ...customQuestions];
+  const filtered = category === "Tümü" ? allQuestions : allQuestions.filter((q) => q.category === category);
 
   const handleSelect = (question, idx) => {
     if (answers[question.id] !== undefined) return;
@@ -881,10 +1061,31 @@ function BankPage({ progress, recordAnswer }) {
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold mb-1">Soru Bankası</h2>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-display text-2xl font-bold">Soru Bankası</h2>
+        {isAdmin && (
+          <button
+            onClick={() => setShowForm((s) => !s)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white"
+            style={{ background: COLORS.ink }}
+          >
+            {showForm ? <X size={13} /> : <Plus size={13} />}
+            {showForm ? "Vazgeç" : "Soru Ekle"}
+          </button>
+        )}
+      </div>
       <p className="text-sm mb-4" style={{ color: COLORS.pencil }}>
         Bir seçeneği işaretle, doğru cevap anında gösterilir.
       </p>
+
+      {isAdmin && showForm && (
+        <QuestionForm
+          onSubmit={(cat, q, options, correct, explain) => {
+            addQuestion(cat, q, options, correct, explain);
+            setShowForm(false);
+          }}
+        />
+      )}
 
       <div className="flex flex-wrap gap-2 mb-5">
         {["Tümü", ...CATEGORIES].map((c) => (
@@ -907,6 +1108,7 @@ function BankPage({ progress, recordAnswer }) {
         {filtered.map((question, i) => {
           const selected = answers[question.id];
           const revealed = selected !== undefined;
+          const isCustom = question.id.startsWith("cq");
           return (
             <div key={question.id}>
             {i > 0 && i % 4 === 0 && (
@@ -915,11 +1117,18 @@ function BankPage({ progress, recordAnswer }) {
               </div>
             )}
             <div className="rounded-sm p-4" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
-              <div className="flex items-start gap-2 mb-3">
-                <span className="font-mono text-xs mt-0.5" style={{ color: COLORS.pencil }}>
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <p className="font-medium text-sm sm:text-base">{question.q}</p>
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-mono text-xs mt-0.5" style={{ color: COLORS.pencil }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <p className="font-medium text-sm sm:text-base">{question.q}</p>
+                </div>
+                {isAdmin && isCustom && (
+                  <button onClick={() => deleteQuestion(question.id)} aria-label="Soruyu sil" style={{ color: COLORS.pencil }} className="shrink-0">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
               <div className="space-y-2 pl-7">
                 {question.options.map((opt, idx) => (
@@ -963,17 +1172,107 @@ function BankPage({ progress, recordAnswer }) {
   );
 }
 
+function QuestionForm({ onSubmit }) {
+  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [q, setQ] = useState("");
+  const [options, setOptions] = useState(["", "", "", "", ""]);
+  const [correct, setCorrect] = useState(0);
+  const [explain, setExplain] = useState("");
+
+  const updateOption = (idx, value) => {
+    setOptions((prev) => prev.map((o, i) => (i === idx ? value : o)));
+  };
+
+  const handleSubmit = () => {
+    if (!q.trim() || options.some((o) => !o.trim()) || !explain.trim()) return;
+    onSubmit(category, q.trim(), options.map((o) => o.trim()), correct, explain.trim());
+  };
+
+  return (
+    <div className="p-4 mb-5" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+      <div className="grid sm:grid-cols-2 gap-3 mb-3">
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="px-3 py-2 text-sm outline-none"
+          style={{ border: `1px solid ${COLORS.rule}` }}
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Soru metni"
+          className="px-3 py-2 text-sm outline-none"
+          style={{ border: `1px solid ${COLORS.rule}` }}
+        />
+      </div>
+      <p className="text-xs font-semibold mb-1.5" style={{ color: COLORS.pencil }}>
+        Seçenekler (doğru cevabın yanındaki daireyi işaretle)
+      </p>
+      <div className="space-y-2 mb-3">
+        {options.map((opt, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <button
+              onClick={() => setCorrect(idx)}
+              className="flex items-center justify-center rounded-full shrink-0 font-mono text-xs font-semibold"
+              style={{
+                width: 26,
+                height: 26,
+                border: `2px solid ${correct === idx ? COLORS.sage : COLORS.rule}`,
+                background: correct === idx ? COLORS.sage : "transparent",
+                color: correct === idx ? "#fff" : COLORS.pencil,
+              }}
+            >
+              {OPTION_LETTERS[idx]}
+            </button>
+            <input
+              value={opt}
+              onChange={(e) => updateOption(idx, e.target.value)}
+              placeholder={`${OPTION_LETTERS[idx]} seçeneği`}
+              className="flex-1 px-3 py-1.5 text-sm outline-none"
+              style={{ border: `1px solid ${COLORS.rule}` }}
+            />
+          </div>
+        ))}
+      </div>
+      <textarea
+        value={explain}
+        onChange={(e) => setExplain(e.target.value)}
+        placeholder="Doğru cevabın açıklaması…"
+        rows={3}
+        className="w-full px-3 py-2 text-sm outline-none mb-3"
+        style={{ border: `1px solid ${COLORS.rule}` }}
+      />
+      <button
+        onClick={handleSubmit}
+        className="px-4 py-2 text-sm font-semibold text-white"
+        style={{ background: COLORS.ink }}
+      >
+        Soruyu Yayınla
+      </button>
+    </div>
+  );
+}
+
 /* ----------------------------- DENEME SINAVI ----------------------------- */
 
-function ExamPage({ recordExamResult }) {
+function ExamPage({ recordExamResult, customQuestions }) {
   const [status, setStatus] = useState("idle"); // idle | running | finished
   const [examQuestions, setExamQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(EXAM_DURATION);
   const timerRef = useRef(null);
 
+  const questionPool = [...QUESTIONS, ...customQuestions];
+  const examSize = Math.min(20, questionPool.length);
+
   const startExam = () => {
-    setExamQuestions(shuffle(QUESTIONS));
+    setExamQuestions(shuffle(questionPool).slice(0, examSize));
     setAnswers({});
     setTimeLeft(EXAM_DURATION);
     setStatus("running");
@@ -1021,7 +1320,7 @@ function ExamPage({ recordExamResult }) {
         <Clock size={32} style={{ color: COLORS.optikRed }} className="mx-auto mb-3" />
         <h2 className="font-display text-2xl font-bold mb-2">Deneme Sınavı</h2>
         <p className="text-sm mb-6" style={{ color: COLORS.pencil }}>
-          {QUESTIONS.length} soru · {EXAM_DURATION / 60} dakika · Karışık kategori. Süre bitince sınav otomatik teslim edilir.
+          {examSize} soru · {EXAM_DURATION / 60} dakika · Karışık kategori. Süre bitince sınav otomatik teslim edilir.
         </p>
         <button
           onClick={startExam}
