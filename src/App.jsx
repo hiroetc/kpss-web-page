@@ -249,7 +249,7 @@ const NAV_ITEMS = [
 
 // Bu şifreyi kendi belirleyeceğin bir şifreyle değiştir.
 // Bu basit bir istemci-taraflı engelleyicidir, gerçek bir güvenlik katmanı değildir.
-const ADMIN_PASSWORD = "atanova2026";
+const ADMIN_PASSWORD = "27071997";
 
 export default function KPSSPlatform() {
   const [page, setPage] = useState("home");
