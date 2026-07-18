@@ -249,7 +249,7 @@ const NAV_ITEMS = [
 
 // Bu şifreyi kendi belirleyeceğin bir şifreyle değiştir.
 // Bu basit bir istemci-taraflı engelleyicidir, gerçek bir güvenlik katmanı değildir.
-const ADMIN_PASSWORD = "27071997";
+const ADMIN_PASSWORD = "atanova2026";
 
 export default function KPSSPlatform() {
   const [page, setPage] = useState("home");
@@ -324,6 +324,15 @@ export default function KPSSPlatform() {
   const addQuestion = useCallback((category, q, options, correct, explain) => {
     setCustomQuestions((prev) => {
       const next = [{ id: `cq${Date.now()}`, category, q, options, correct, explain }, ...prev];
+      window.storage.set("kpss-custom-questions", JSON.stringify(next), true).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const addQuestionsBulk = useCallback((newQuestions) => {
+    setCustomQuestions((prev) => {
+      const withIds = newQuestions.map((nq, idx) => ({ id: `cq${Date.now()}_${idx}`, ...nq }));
+      const next = [...withIds, ...prev];
       window.storage.set("kpss-custom-questions", JSON.stringify(next), true).catch(() => {});
       return next;
     });
@@ -491,6 +500,7 @@ export default function KPSSPlatform() {
             recordAnswer={recordAnswer}
             customQuestions={customQuestions}
             addQuestion={addQuestion}
+            addQuestionsBulk={addQuestionsBulk}
             deleteQuestion={deleteQuestion}
             isAdmin={isAdmin}
           />
@@ -1045,10 +1055,10 @@ function TopicForm({ onSubmit, defaultCategory }) {
 
 /* ----------------------------- SORU BANKASI ----------------------------- */
 
-function BankPage({ progress, recordAnswer, customQuestions, addQuestion, deleteQuestion, isAdmin }) {
+function BankPage({ progress, recordAnswer, customQuestions, addQuestion, addQuestionsBulk, deleteQuestion, isAdmin }) {
   const [category, setCategory] = useState("Tümü");
   const [answers, setAnswers] = useState({}); // qid -> selectedIndex
-  const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState(null); // null | "single" | "bulk"
 
   const allQuestions = [...QUESTIONS, ...customQuestions];
   const filtered = category === "Tümü" ? allQuestions : allQuestions.filter((q) => q.category === category);
@@ -1061,28 +1071,55 @@ function BankPage({ progress, recordAnswer, customQuestions, addQuestion, delete
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
         <h2 className="font-display text-2xl font-bold">Soru Bankası</h2>
         {isAdmin && (
-          <button
-            onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white"
-            style={{ background: COLORS.ink }}
-          >
-            {showForm ? <X size={13} /> : <Plus size={13} />}
-            {showForm ? "Vazgeç" : "Soru Ekle"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFormMode(formMode === "single" ? null : "single")}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold"
+              style={{
+                background: formMode === "single" ? COLORS.ink : "#fff",
+                color: formMode === "single" ? "#fff" : COLORS.ink,
+                border: `1px solid ${COLORS.ink}`,
+              }}
+            >
+              {formMode === "single" ? <X size={13} /> : <Plus size={13} />}
+              Tek Soru
+            </button>
+            <button
+              onClick={() => setFormMode(formMode === "bulk" ? null : "bulk")}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold"
+              style={{
+                background: formMode === "bulk" ? COLORS.ink : "#fff",
+                color: formMode === "bulk" ? "#fff" : COLORS.ink,
+                border: `1px solid ${COLORS.ink}`,
+              }}
+            >
+              {formMode === "bulk" ? <X size={13} /> : <Plus size={13} />}
+              Toplu Ekle
+            </button>
+          </div>
         )}
       </div>
       <p className="text-sm mb-4" style={{ color: COLORS.pencil }}>
         Bir seçeneği işaretle, doğru cevap anında gösterilir.
       </p>
 
-      {isAdmin && showForm && (
+      {isAdmin && formMode === "single" && (
         <QuestionForm
           onSubmit={(cat, q, options, correct, explain) => {
             addQuestion(cat, q, options, correct, explain);
-            setShowForm(false);
+            setFormMode(null);
+          }}
+        />
+      )}
+
+      {isAdmin && formMode === "bulk" && (
+        <BulkQuestionForm
+          onSubmit={(questions) => {
+            addQuestionsBulk(questions);
+            setFormMode(null);
           }}
         />
       )}
@@ -1254,6 +1291,144 @@ function QuestionForm({ onSubmit }) {
         style={{ background: COLORS.ink }}
       >
         Soruyu Yayınla
+      </button>
+    </div>
+  );
+}
+
+const BULK_TEMPLATE = `Kategori: Türkçe
+Soru: Örnek soru metni buraya yazılır?
+A) birinci seçenek
+B) ikinci seçenek
+C) üçüncü seçenek
+D) dördüncü seçenek
+E) beşinci seçenek
+Doğru: C
+Açıklama: Doğru cevabın kısa açıklaması buraya yazılır.
+-----
+Kategori: Matematik
+Soru: İkinci örnek soru buraya yazılır?
+A) birinci seçenek
+B) ikinci seçenek
+C) üçüncü seçenek
+D) dördüncü seçenek
+E) beşinci seçenek
+Doğru: A
+Açıklama: Doğru cevabın kısa açıklaması buraya yazılır.`;
+
+function parseBulkQuestions(text) {
+  const blocks = text
+    .split(/\n\s*-{3,}\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const results = [];
+  const errors = [];
+
+  blocks.forEach((block, i) => {
+    const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    const get = (prefix) => {
+      const line = lines.find((l) => l.toLocaleLowerCase("tr").startsWith(prefix.toLocaleLowerCase("tr")));
+      return line ? line.slice(prefix.length).trim() : null;
+    };
+
+    const category = get("Kategori:");
+    const q = get("Soru:");
+    const optA = get("A)");
+    const optB = get("B)");
+    const optC = get("C)");
+    const optD = get("D)");
+    const optE = get("E)");
+    const dogru = get("Doğru:");
+    const explain = get("Açıklama:");
+
+    if (!category || !q || !optA || !optB || !optC || !optD || !optE || !dogru || !explain) {
+      errors.push(`${i + 1}. soru: eksik alan var, atlandı.`);
+      return;
+    }
+    const letterIdx = OPTION_LETTERS.indexOf(dogru.toLocaleUpperCase("tr").trim());
+    if (letterIdx === -1) {
+      errors.push(`${i + 1}. soru: "Doğru:" alanı A-E arası bir harf olmalı, atlandı.`);
+      return;
+    }
+    results.push({ category, q, options: [optA, optB, optC, optD, optE], correct: letterIdx, explain });
+  });
+
+  return { results, errors };
+}
+
+function BulkQuestionForm({ onSubmit }) {
+  const [text, setText] = useState("");
+  const [showExample, setShowExample] = useState(false);
+  const [errors, setErrors] = useState([]);
+  const [addedCount, setAddedCount] = useState(null);
+
+  const handleSubmit = () => {
+    const { results, errors } = parseBulkQuestions(text);
+    setErrors(errors);
+    if (results.length > 0) {
+      onSubmit(results);
+      setAddedCount(results.length);
+      setText("");
+    } else {
+      setAddedCount(null);
+    }
+  };
+
+  return (
+    <div className="p-4 mb-5" style={{ background: "#fff", border: `1px solid ${COLORS.rule}` }}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-semibold" style={{ color: COLORS.ink }}>
+          Birden fazla soruyu aşağıdaki kutuya, her birini{" "}
+          <span className="font-mono">-----</span> ile ayırarak yapıştır.
+        </p>
+        <button
+          onClick={() => setShowExample((s) => !s)}
+          className="text-xs font-semibold underline shrink-0 ml-3"
+          style={{ color: COLORS.optikRed }}
+        >
+          {showExample ? "Örneği gizle" : "Format örneğini gör"}
+        </button>
+      </div>
+
+      {showExample && (
+        <pre
+          className="text-xs p-3 mb-3 overflow-x-auto whitespace-pre-wrap font-mono"
+          style={{ background: COLORS.paperDark, border: `1px solid ${COLORS.rule}`, color: COLORS.pencil }}
+        >
+          {BULK_TEMPLATE}
+        </pre>
+      )}
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={BULK_TEMPLATE}
+        rows={10}
+        className="w-full px-3 py-2 text-sm outline-none mb-3 font-mono"
+        style={{ border: `1px solid ${COLORS.rule}` }}
+      />
+
+      {errors.length > 0 && (
+        <div className="text-xs mb-3 p-2.5" style={{ background: COLORS.redBg, color: COLORS.danger }}>
+          {errors.map((e, i) => (
+            <div key={i}>{e}</div>
+          ))}
+        </div>
+      )}
+
+      {addedCount !== null && (
+        <div className="text-xs mb-3 p-2.5" style={{ background: COLORS.sageBg, color: COLORS.sage }}>
+          {addedCount} soru başarıyla eklendi.
+        </div>
+      )}
+
+      <button
+        onClick={handleSubmit}
+        className="px-4 py-2 text-sm font-semibold text-white"
+        style={{ background: COLORS.ink }}
+      >
+        Hepsini Yayınla
       </button>
     </div>
   );
