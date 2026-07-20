@@ -346,10 +346,10 @@ export default function KPSSPlatform() {
     });
   }, []);
 
-  const addArticle = useCallback((title, category, body) => {
+  const addArticle = useCallback((title, category, body, image) => {
     setArticles((prev) => {
       const next = [
-        { id: `a${Date.now()}`, title, category, body, date: new Date().toLocaleDateString("tr-TR") },
+        { id: `a${Date.now()}`, title, category, body, image: image || "", date: new Date().toLocaleDateString("tr-TR") },
         ...prev,
       ];
       window.storage.set("kpss-articles", JSON.stringify(next), true).catch(() => {});
@@ -440,7 +440,8 @@ export default function KPSSPlatform() {
           </span>
         </div>
         {/* Ana isim (nameplate) */}
-        <div className="max-w-5xl mx-auto px-5 pt-4 pb-1 text-center">
+        <div className="max-w-5xl mx-auto px-5 pt-4 pb-1 flex items-center justify-center gap-2.5">
+          <img src="/logo.png" alt="Atanova" className="h-8 sm:h-10 w-auto" />
           <span className="font-display text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: COLORS.ink }}>
             Atanova
           </span>
@@ -625,7 +626,7 @@ function HomePage({ progress, setPage, articles, addArticle, deleteArticle, reco
           />
         </div>
 
-        {isAdmin && showForm && <ArticleForm onSubmit={(title, category, body) => { addArticle(title, category, body); setShowForm(false); }} />}
+        {isAdmin && showForm && <ArticleForm onSubmit={(title, category, body, image) => { addArticle(title, category, body, image); setShowForm(false); }} />}
 
         {/* Yazı listesi — gazete ön sayfası düzeni */}
         <div>
@@ -735,6 +736,7 @@ function ArticleForm({ onSubmit }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Duyuru");
   const [body, setBody] = useState("");
+  const [image, setImage] = useState("");
 
   return (
     <div className="rounded-sm p-4 mb-5" style={{ background: "#fff", border: `1px solid ${COLORS.rule}`, boxShadow: "0 1px 2px rgba(21,19,43,0.04)" }}>
@@ -759,6 +761,22 @@ function ArticleForm({ onSubmit }) {
           ))}
         </select>
       </div>
+      <input
+        value={image}
+        onChange={(e) => setImage(e.target.value)}
+        placeholder="Görsel URL (isteğe bağlı, ör. /images/kapak.jpg)"
+        className="w-full px-3 py-2 rounded text-sm outline-none mb-3"
+        style={{ border: `1px solid ${COLORS.rule}` }}
+      />
+      {image && (
+        <img
+          src={image}
+          alt=""
+          className="w-full max-h-40 object-cover mb-3"
+          style={{ border: `1px solid ${COLORS.rule}` }}
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
+        />
+      )}
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
@@ -770,9 +788,10 @@ function ArticleForm({ onSubmit }) {
       <button
         onClick={() => {
           if (!title.trim() || !body.trim()) return;
-          onSubmit(title.trim(), category, body.trim());
+          onSubmit(title.trim(), category, body.trim(), image.trim());
           setTitle("");
           setBody("");
+          setImage("");
         }}
         className="px-4 py-2 rounded text-sm font-medium text-white"
         style={{ background: COLORS.ink }}
@@ -791,6 +810,14 @@ function ArticleCard({ article, open, onToggle, onDelete, isFirst, isAdmin }) {
     <div className={isFirst ? "pb-6 mb-6" : "py-5"} style={{ borderBottom: isFirst ? `1px solid ${COLORS.rule}` : `1px solid ${COLORS.rule}` }}>
       <div className="flex items-start justify-between gap-3">
         <button onClick={onToggle} className="text-left flex-1 group">
+          {article.image && (
+            <img
+              src={article.image}
+              alt=""
+              className={`w-full object-cover mb-3 ${isFirst ? "max-h-72" : "max-h-40"}`}
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          )}
           <div className="flex items-center gap-2 mb-1.5">
             <span
               className="font-mono text-[11px] tracking-wide px-1.5 py-0.5 font-semibold uppercase"
